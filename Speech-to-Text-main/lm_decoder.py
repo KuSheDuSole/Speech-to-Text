@@ -1,16 +1,10 @@
 """
-lm_decoder.py — Beam search декодер с автоматическим определением KenLM.
+lm_decoder.py — Beam search декодер для wav2vec2.
 
-Логика:
-  - Если KenLM установлен И передан lm_path → полноценная LM (лучшее качество)
-  - Если KenLM не установлен или lm_path не передан → beam search без LM
-  - В обоих случаях поддерживаются hotwords
-
-На Linux:  pip install https://github.com/kpu/kenlm/archive/master.zip
-На Windows: KenLM недоступен без компиляции, используем beam search
+Использует pyctcdecode для beam search декодирования с поддержкой hotwords.
+KenLM не используется — чистый beam search без языковой модели.
 
 Лицензия pyctcdecode: Apache 2.0
-Лицензия KenLM: LGPL-2.1 (допускает коммерческое использование)
 """
 
 from __future__ import annotations
@@ -29,26 +23,13 @@ def _get_vocab(processor) -> list[str]:
     return [tok for tok, _ in sorted_vocab]
 
 
-def _kenlm_available() -> bool:
-    """Проверяем доступен ли KenLM."""
-    try:
-        import kenlm  # noqa: F401
-        return True
-    except ImportError:
-        return False
-
-
 class LMDecoder:
     """
-    Beam search декодер с опциональной языковой моделью KenLM.
+    Beam search декодер с поддержкой hotwords.
 
     Параметры
     ----------
     processor      : AutoProcessor (wav2vec2)
-    lm_path        : путь к .arpa или .bin файлу KenLM (только Linux)
-                     None → beam search без LM
-    alpha          : вес LM (0.3–0.8), используется только с KenLM
-    beta           : бонус вставки слова (0.5–2.0), используется только с KenLM
     beam_width     : ширина луча (50–200)
     hotwords       : список важных слов с повышенным весом
                      например: ["ЕГЭ", "КубГУ", "ФКТиПМ"]
@@ -58,12 +39,9 @@ class LMDecoder:
     def __init__(
         self,
         processor,
-        lm_path: Optional[str] = None,
-        alpha: float = 0.5,
-        beta: float = 1.5,
         beam_width: int = 100,
         hotwords: Optional[list[str]] = None,
-        hotword_weight: float = 10.0,
+        hotword_weight: float = 10.0
     ):
         try:
             from pyctcdecode import build_ctcdecoder
@@ -73,40 +51,13 @@ class LMDecoder:
         self.beam_width = beam_width
         self.hotwords = [w.lower() for w in hotwords] if hotwords else []
         self.hotword_weight = hotword_weight
-        self.has_lm = False
 
         labels = _get_vocab(processor)
+        self._decoder = build_ctcdecoder(labels=labels)
 
-        # Пробуем загрузить KenLM если передан путь
-        if lm_path:
-            import os
-            if not os.path.isfile(lm_path):
-                logger.warning(f"Файл LM не найден: {lm_path} — работаем без LM")
-                lm_path = None
-            elif not _kenlm_available():
-                logger.warning(
-                    "KenLM не установлен.\n"
-                    "На Ubuntu: pip install https://github.com/kpu/kenlm/archive/master.zip\n"
-                    "Работаем без LM."
-                )
-                lm_path = None
-
-        if lm_path:
-            self._decoder = build_ctcdecoder(
-                labels=labels,
-                kenlm_model_path=lm_path,
-                alpha=alpha,
-                beta=beta,
-            )
-            self.has_lm = True
-            print(f"✅ LMDecoder: KenLM загружен из {lm_path}")
-            print(f"   alpha={alpha}, beta={beta}, beam_width={beam_width}")
-        else:
-            self._decoder = build_ctcdecoder(labels=labels)
-            print(f"✅ LMDecoder: beam search без KenLM, beam_width={beam_width}")
-
+        print(f"✅ LMDecoder: beam search, beam_width={beam_width}")
         if self.hotwords:
-            print(f"   hotwords: {self.hotwords}")
+            print(f"   hotwords ({len(self.hotwords)}): {self.hotwords}")
 
     def decode(self, logits: np.ndarray) -> str:
         """

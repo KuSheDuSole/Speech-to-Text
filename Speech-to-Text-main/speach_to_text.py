@@ -1,3 +1,11 @@
+"""
+speach_to_text.py — ASR + диаризация + beam search (LM) + пунктуация.
+
+Новые зависимости:
+    pip install pyctcdecode
+    pip install deepmultilingualpunctuation
+"""
+
 import argparse
 import math
 from collections import defaultdict
@@ -10,7 +18,6 @@ from diarization_silera_ecapa import diarize
 import textwrap
 import re
 import logging
-import os
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +27,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 DEFAULT_HOTWORDS = [
     "егэ", "огэ", "кубгу", "фктипм", "фкт", "макрос",
-    "краснодар", "университет", "институт", "факультет", "интернетцентр", "ран",
+    "краснодар", "университет", "институт", "факультет",
 ]
 
 
@@ -68,10 +75,6 @@ def run_pipeline(
     device: str = None,
     # LM параметры
     use_lm: bool = True,
-    #lm_path: str = None,
-    lm_path: str = os.path.expanduser("~/Tom_D/CoursePaper/lm/ru_3gram.bin"),
-    lm_alpha: float = 0.5,
-    lm_beta: float = 1.5,
     lm_beam_width: int = 100,
     hotwords: list[str] = None,
     hotword_weight: float = 10.0,
@@ -82,10 +85,6 @@ def run_pipeline(
     Параметры
     ----------
     use_lm         : True → beam search декодирование (лучше greedy)
-    lm_path        : путь к .arpa/.bin файлу KenLM (только Linux/Ubuntu)
-                     None → beam search без LM
-    lm_alpha       : вес LM (0.3–0.8), только с KenLM
-    lm_beta        : бонус вставки слова (0.5–2.0), только с KenLM
     lm_beam_width  : ширина луча (50–200)
     hotwords       : список важных слов (аббревиатуры, термины)
     hotword_weight : вес hotwords (5–20)
@@ -109,8 +108,8 @@ def run_pipeline(
 
     # ── загрузка ASR модели ───────────────────────────────────────────────
     print(f"\n🔧 Загружаем ASR модель из: {model_path}")
-    processor = AutoProcessor.from_pretrained(model_path, local_files_only=True)
-    model = AutoModelForCTC.from_pretrained(model_path, local_files_only=True).to(device)
+    processor = AutoProcessor.from_pretrained(model_path)
+    model = AutoModelForCTC.from_pretrained(model_path).to(device)
     model.eval()
 
     # ── инициализация LM-декодера ─────────────────────────────────────────
@@ -122,9 +121,6 @@ def run_pipeline(
             hw = hotwords if hotwords is not None else DEFAULT_HOTWORDS
             lm_decoder = LMDecoder(
                 processor=processor,
-                lm_path=lm_path,
-                alpha=lm_alpha,
-                beta=lm_beta,
                 beam_width=lm_beam_width,
                 hotwords=hw,
                 hotword_weight=hotword_weight,
@@ -250,23 +246,17 @@ def parse_args():
     parser = argparse.ArgumentParser(description="ASR + Diarization + Beam Search + Punctuation")
 
     parser.add_argument("--audio", "-a",
-                        default= os.path.expanduser('~/Tom_D/CoursePaper/my_recorded_waw/record_20251209_211331.wav'))
+                        default="D:/CoursePaper/my_recorded_waw/record_20251209_211331.wav")
     parser.add_argument("--model", "-m",
-                        default=os.path.expanduser('~/Tom_D/CoursePaper/model/wav2vec2_finetuned_subset_002'))
+                        default="D:/CoursePaper/Speech-to-Text-main/model/wav2vec2_finetuned_subset_002")
     parser.add_argument("--out", "-o",
-                        default=os.path.expanduser('~/Tom_D/CoursePaper/final_texts/transcript.txt'))
+                        default="D:/CoursePaper/final_texts/transcript.txt")
     parser.add_argument("--min_speakers", type=int, default=1)
     parser.add_argument("--max_speakers", type=int, default=4)
 
     # LM / beam search
     parser.add_argument("--no_lm", action="store_true",
                         help="Отключить beam search, использовать greedy")
-    parser.add_argument("--lm_path", default=os.path.expanduser('~/Tom_D/CoursePaper/lm/ru_3gram.bin'),
-                        help="Путь к .arpa/.bin файлу KenLM (только Linux)")
-    parser.add_argument("--lm_alpha", type=float, default=0.2,
-                        help="Вес LM (default=0.5, только с KenLM)")
-    parser.add_argument("--lm_beta", type=float, default=1.0,
-                        help="Бонус вставки слова (default=1.5, только с KenLM)")
     parser.add_argument("--lm_beam", type=int, default=100,
                         help="Ширина луча beam search (default=100)")
     parser.add_argument("--hotwords", nargs="*", default=None,
@@ -290,9 +280,6 @@ if __name__ == "__main__":
         min_speakers    = args.min_speakers,
         max_speakers    = args.max_speakers,
         use_lm          = not args.no_lm,
-        lm_path         = args.lm_path,
-        lm_alpha        = args.lm_alpha,
-        lm_beta         = args.lm_beta,
         lm_beam_width   = args.lm_beam,
         hotwords        = args.hotwords,
         hotword_weight  = args.hotword_weight,
