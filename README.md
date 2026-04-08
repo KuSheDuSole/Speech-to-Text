@@ -18,7 +18,15 @@
 - scikit-learn       x
 ---
 ### Шаг 1 — Установка виртуального окружения и зависимостей
-Запусти скрипт `install_linux.sh`
+Запусти скрипт `install_linux.sh`, он создаст виртуальное окружениие и скачает необходммые зависимости
+
+Если хочешь запускать из терминала, тогда активируй окружение через
+```
+source Папка_проекта/venv/bin/activate
+```
+
+Если хочешь запускать из PyCharm, то выбери поставь окружение в настройках `Files -> Settings -> Python -> Interpreter -> Add Interpreter -> Add local Interpreter -> Select existing -> В Python path выбери Папка_проекта/venv/bin/python`
+В строчке Python Interpreter должен быть показан `Python 3.11`
 
 ---
 ### Шаг 2 — Загрузка Silero VAD (вручную)
@@ -35,7 +43,7 @@ https://github.com/snakers4/silero-vad/archive/refs/heads/master.zip
 D:\CoursePaper\silero_vad\silero-vad-master\hubconf.py
 ```
 ---
-Известные предупреждения (не ошибки, игнорировать)
+### Известные предупреждения (не ошибки, игнорировать)
 ```
 SpeechBrain could not find any working torchaudio backend.
 ```
@@ -49,7 +57,7 @@ torch.backends.cudnn.allow_tf32 will be deprecated after Pytorch 2.9
 ```
 → UserWarning из PyTorch, не влияет на работу.
 ---
-Итоговая структура проекта
+### Итоговая структура проекта
 ```
 Папка_проекта\
 ├── final_texts                    # папка в которой лежит выходная транскрипция
