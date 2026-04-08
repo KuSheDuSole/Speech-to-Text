@@ -10,10 +10,9 @@
 #   2. Создаёт venv
 #   3. Ставит PyTorch с нужной CUDA
 #   4. Ставит все зависимости проекта
-#   5. Ставит KenLM (системные пакеты + pip)
-#   6. Ставит pyctcdecode + deepmultilingualpunctuation
-#   7. Патчит speechbrain
-#   8. Запускает проверку
+#   5. Ставит pyctcdecode + deepmultilingualpunctuation
+#   6. Патчит speechbrain
+#   7. Запускает проверку
 
 set -e
 
@@ -166,35 +165,15 @@ ok "Аудио и ML зависимости установлены"
 # ══════════════════════════════════════════════════════════════════════════════
 # ШАГ 5 — SpeechBrain
 # ══════════════════════════════════════════════════════════════════════════════
-step "Шаг 5/8 — SpeechBrain 1.0.3"
+step "Шаг 5/7 — SpeechBrain 1.0.3"
 
 pip install speechbrain==1.0.3 -q
 ok "SpeechBrain 1.0.3 установлен"
 
 # ══════════════════════════════════════════════════════════════════════════════
-# ШАГ 6 — KenLM (на Linux ставится нормально!)
+# ШАГ 6 — pyctcdecode (beam search декодер)
 # ══════════════════════════════════════════════════════════════════════════════
-step "Шаг 6/8 — KenLM + pyctcdecode"
-
-info "Устанавливаем системные зависимости для KenLM..."
-sudo apt-get install -y \
-    build-essential \
-    cmake \
-    libboost-all-dev \
-    libeigen3-dev \
-    zlib1g-dev \
-    libbz2-dev \
-    liblzma-dev \
-    -q 2>/dev/null || warn "Не удалось поставить системные пакеты (нет sudo?)"
-
-info "Собираем и устанавливаем KenLM..."
-if pip install https://github.com/kpu/kenlm/archive/master.zip -q; then
-    ok "KenLM установлен"
-    KENLM_OK=true
-else
-    warn "KenLM не установился — будем использовать beam search без LM"
-    KENLM_OK=false
-fi
+step "Шаг 6/7 — pyctcdecode"
 
 pip install pyctcdecode -q
 ok "pyctcdecode установлен"
@@ -202,7 +181,7 @@ ok "pyctcdecode установлен"
 # ══════════════════════════════════════════════════════════════════════════════
 # ШАГ 7 — Пунктуация
 # ══════════════════════════════════════════════════════════════════════════════
-step "Шаг 7/8 — Пунктуация (deepmultilingualpunctuation)"
+step "Шаг 7/7 — Пунктуация (deepmultilingualpunctuation)"
 
 pip install deepmultilingualpunctuation -q
 ok "deepmultilingualpunctuation установлен"
@@ -210,7 +189,7 @@ ok "deepmultilingualpunctuation установлен"
 # ══════════════════════════════════════════════════════════════════════════════
 # ШАГ 8 — Патч SpeechBrain
 # ══════════════════════════════════════════════════════════════════════════════
-step "Шаг 8/8 — Патч SpeechBrain"
+step "Патч SpeechBrain"
 
 if [ -f "$SCRIPT_DIR/patch_speechbrain.py" ]; then
     python "$SCRIPT_DIR/patch_speechbrain.py"
@@ -239,19 +218,7 @@ echo -e "${GREEN}  Установка завершена!${NC}"
 echo -e "${CYAN}════════════════════════════════════════════════════════${NC}"
 echo ""
 
-if [ "$KENLM_OK" = true ]; then
-    ok "KenLM установлен — полноценная языковая модель доступна!"
-    echo ""
-    info "Для использования KenLM скачай русскую .arpa модель:"
-    echo "    wget https://alphacephei.com/vosk/models/vosk-model-small-ru-0.22.zip"
-    echo "    unzip vosk-model-small-ru-0.22.zip"
-    echo "    # .arpa файл будет в: vosk-model-small-ru-0.22/lm/ru.arpa"
-    echo ""
-    info "Запуск с KenLM:"
-    echo "    python speach_to_text.py --lm_path ./vosk-model-small-ru-0.22/lm/ru.arpa"
-else
-    warn "KenLM не установлен — используется beam search без LM"
-fi
+ok "Beam search декодирование готово к работе"
 
 echo ""
 info "Активация окружения в будущем:"

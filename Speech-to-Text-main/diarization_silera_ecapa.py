@@ -94,7 +94,7 @@ def diarize(audio_path, min_speakers=1, max_speakers=4,
     print(f"\n🔍 cosine mean={mean_dist:.4f}, std={std_dist:.4f}")
 
     # Порог монолога берётся из config.py (MONOLOGUE_STD_THRESHOLD)
-    if std_dist < MONOLOGUE_STD_THRESHOLD:
+    if (std_dist < MONOLOGUE_STD_THRESHOLD) or (max_speakers == 1):
         print("🎙 Detected MONOLOGUE (low embedding variance). Skipping clustering.")
         for seg in raw_segments:
             seg["speaker"] = "speaker_0"

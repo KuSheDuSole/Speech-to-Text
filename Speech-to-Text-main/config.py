@@ -17,7 +17,7 @@ else:
 
 # ── Пути к папкам ──────────────────────────────────────────────────────────
 RECORD_DIR   = BASE_DIR / "my_recorded_waw"
-MODEL_DIR    = BASE_DIR / "model" / "wav2vec2_finetuned_subset_002"
+MODEL_DIR    = BASE_DIR / "model" / "wav2vec2_golos_002"
 OUTPUT_DIR   = BASE_DIR / "final_texts"
 OUTPUT_FILE  = OUTPUT_DIR / "transcript.txt"
 SILERO_DIR   = BASE_DIR / "silero_vad" / "silero-vad-master"
