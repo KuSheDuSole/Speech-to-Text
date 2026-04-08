@@ -1,12 +1,3 @@
-"""
-lm_decoder.py — Beam search декодер для wav2vec2.
-
-Использует pyctcdecode для beam search декодирования с поддержкой hotwords.
-KenLM не используется — чистый beam search без языковой модели.
-
-Лицензия pyctcdecode: Apache 2.0
-"""
-
 from __future__ import annotations
 import logging
 import numpy as np
@@ -17,25 +8,12 @@ logger = logging.getLogger(__name__)
 
 
 def _get_vocab(processor) -> list[str]:
-    """Достаём список токенов из tokenizer-а, отсортированный по id."""
     vocab_dict: dict[str, int] = processor.tokenizer.get_vocab()
     sorted_vocab = sorted(vocab_dict.items(), key=lambda kv: kv[1])
     return [tok for tok, _ in sorted_vocab]
 
 
 class LMDecoder:
-    """
-    Beam search декодер с поддержкой hotwords.
-
-    Параметры
-    ----------
-    processor      : AutoProcessor (wav2vec2)
-    beam_width     : ширина луча (50–200)
-    hotwords       : список важных слов с повышенным весом
-                     например: ["ЕГЭ", "КубГУ", "ФКТиПМ"]
-    hotword_weight : вес hotwords (5.0–20.0)
-    """
-
     def __init__(
         self,
         processor,
@@ -60,9 +38,6 @@ class LMDecoder:
             print(f"   hotwords ({len(self.hotwords)}): {self.hotwords}")
 
     def decode(self, logits: np.ndarray) -> str:
-        """
-        Декодирует один массив логитов (shape: [T, vocab_size]).
-        """
         if isinstance(logits, torch.Tensor):
             logits = logits.cpu().float().numpy()
 

@@ -11,14 +11,14 @@ from config import (
     MONOLOGUE_STD_THRESHOLD,
 )
 
-# ── Состояние сессии (переопределяет config.py до перезапуска) ─────────────────
-_hotwords      = list(DEFAULT_HOTWORDS)   # текущий список hotwords
-_speaker_mode  = "auto"                   # "auto" | "1" | "2" | "3" | "4"
+
+_hotwords      = list(DEFAULT_HOTWORDS)
+_speaker_mode  = "auto"
 
 MAX_HOTWORDS = 25
 
 
-# ── Утилиты ────────────────────────────────────────────────────────────────────
+
 def clear_console():
     os.system("cls" if os.name == "nt" else "clear")
 
@@ -32,14 +32,12 @@ def get_last_recorded_file():
     return max(wav_files, key=lambda p: p.stat().st_mtime)
 
 def get_speaker_args():
-    """Возвращает min/max_speakers на основе текущего _speaker_mode."""
     if _speaker_mode == "auto":
         return MIN_SPEAKERS, MAX_SPEAKERS
     n = int(_speaker_mode)
     return n, n
 
 
-# ── Запуск записи ──────────────────────────────────────────────────────────────
 def run_recording():
     clear_console()
     print("🎙 Запуск модуля записи...")
@@ -55,7 +53,6 @@ def run_recording():
     wait_key()
 
 
-# ── Запуск обработки ───────────────────────────────────────────────────────────
 def run_processing(file_path):
     clear_console()
     print(f"🧠 Запуск обработки файла:\n{file_path}")
@@ -77,7 +74,6 @@ def run_processing(file_path):
         "--hotword_weight", str(HOTWORD_WEIGHT),
     ]
 
-    # LM
     lm_file = Path(LM_PATH) if LM_PATH else None
     if USE_LM and lm_file and lm_file.exists():
         cmd += ["--lm_path", str(lm_file),
@@ -118,8 +114,6 @@ def choose_file_and_process():
         return
     run_processing(file_path)
 
-
-# ── Меню управления Hotwords ───────────────────────────────────────────────────
 def menu_hotwords():
     while True:
         clear_console()
@@ -151,7 +145,6 @@ def menu_hotwords():
                 print("❌ Пустое слово.")
                 wait_key()
                 continue
-            # Нормализация — приводим к нижнему регистру
             word = word.lower()
             if word in _hotwords:
                 print(f"⚠️  Слово '{word}' уже есть в списке.")
@@ -184,7 +177,6 @@ def menu_hotwords():
             break
 
 
-# ── Меню настроек спикеров ─────────────────────────────────────────────────────
 def menu_speakers():
     global _speaker_mode
     while True:
@@ -221,7 +213,6 @@ def menu_speakers():
             break
 
 
-# ── Главное меню ───────────────────────────────────────────────────────────────
 def menu_loop():
     while True:
         clear_console()

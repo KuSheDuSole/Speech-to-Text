@@ -1,11 +1,3 @@
-"""
-speach_to_text.py — ASR + диаризация + beam search (LM) + пунктуация.
-
-Новые зависимости:
-    pip install pyctcdecode
-    pip install deepmultilingualpunctuation
-"""
-
 import argparse
 import math
 from collections import defaultdict
@@ -21,19 +13,10 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
-# ---------------------------------------------------------------------------
-# Hotwords — добавляй сюда аббревиатуры и термины своей предметной области
-# ---------------------------------------------------------------------------
 DEFAULT_HOTWORDS = [
     "егэ", "огэ", "кубгу", "фктипм", "фкт", "макрос",
     "краснодар", "университет", "институт", "факультет",
 ]
-
-
-# ---------------------------------------------------------------------------
-# Текстовая нормализация
-# ---------------------------------------------------------------------------
 
 def prepare_for_evaluation(text: str) -> str:
     text = text.lower()
@@ -41,11 +24,6 @@ def prepare_for_evaluation(text: str) -> str:
     text = re.sub(r'[^а-яё0-9\s]', '', text)
     text = re.sub(r'\s+', ' ', text)
     return text.strip()
-
-
-# ---------------------------------------------------------------------------
-# Слияние соседних сегментов одного спикера
-# ---------------------------------------------------------------------------
 
 def merge_adjacent_segments(segments):
     if not segments:
@@ -61,10 +39,6 @@ def merge_adjacent_segments(segments):
     return merged
 
 
-# ---------------------------------------------------------------------------
-# Основной pipeline
-# ---------------------------------------------------------------------------
-
 def run_pipeline(
     audio_path: str,
     model_path: str,
@@ -73,30 +47,18 @@ def run_pipeline(
     max_speakers: int = 4,
     sample_rate: int = 16000,
     device: str = None,
-    # LM параметры
     use_lm: bool = True,
     lm_beam_width: int = 100,
     hotwords: list[str] = None,
     hotword_weight: float = 10.0,
-    # Пунктуация
     use_punctuation: bool = True,
 ):
-    """
-    Параметры
-    ----------
-    use_lm         : True → beam search декодирование (лучше greedy)
-    lm_beam_width  : ширина луча (50–200)
-    hotwords       : список важных слов (аббревиатуры, термины)
-    hotword_weight : вес hotwords (5–20)
-    use_punctuation: True → восстанавливать пунктуацию после ASR
-    """
 
-    # ── устройство ────────────────────────────────────────────────────────
+
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"ℹ️  Используем устройство: {device}")
 
-    # ── диаризация ────────────────────────────────────────────────────────
     print(f"\n🔎 Запускаем диаризацию для файла: {audio_path}")
     segments = diarize(audio_path, min_speakers=min_speakers, max_speakers=max_speakers)
 
@@ -106,13 +68,11 @@ def run_pipeline(
 
     segments = sorted(segments, key=lambda x: x["start"])
 
-    # ── загрузка ASR модели ───────────────────────────────────────────────
     print(f"\n🔧 Загружаем ASR модель из: {model_path}")
     processor = AutoProcessor.from_pretrained(model_path)
     model = AutoModelForCTC.from_pretrained(model_path).to(device)
     model.eval()
 
-    # ── инициализация LM-декодера ─────────────────────────────────────────
     lm_decoder = None
     if use_lm:
         print(f"\n📖 Инициализируем beam search декодер...")
@@ -128,7 +88,6 @@ def run_pipeline(
         except ImportError as e:
             print(f"⚠️  {e}\nПродолжаем с greedy декодированием.")
 
-    # ── инициализация пунктуации ──────────────────────────────────────────
     punct_restorer = None
     if use_punctuation:
         try:
@@ -137,11 +96,9 @@ def run_pipeline(
         except ImportError as e:
             print(f"⚠️  {e}\nПродолжаем без пунктуации.")
 
-    # ── загрузка аудио ────────────────────────────────────────────────────
     wav, sr = librosa.load(audio_path, sr=sample_rate)
     wav = wav.astype(np.float32)
 
-    # ── распознавание сегментов ───────────────────────────────────────────
     print("\n🎙 Распознавание сегментов:")
     results = []
 
@@ -159,15 +116,13 @@ def run_pipeline(
             input_values = inputs.input_values.to(device)
 
             with torch.no_grad():
-                logits = model(input_values).logits  # [1, T, vocab]
+                logits = model(input_values).logits
 
             if lm_decoder is not None:
-                # Beam search
                 logits_np = logits[0].cpu().float().numpy()
                 text = lm_decoder.decode(logits_np)
                 text = prepare_for_evaluation(text)
             else:
-                # Greedy (оригинальное поведение)
                 pred_ids = torch.argmax(logits, dim=-1).cpu().numpy()[0]
                 try:
                     text = processor.decode(pred_ids, skip_special_tokens=True)
@@ -182,15 +137,12 @@ def run_pipeline(
             "text":    text,
         })
 
-    # ── слияние соседних сегментов ────────────────────────────────────────
     merged = merge_adjacent_segments(results)
 
-    # ── восстановление пунктуации ─────────────────────────────────────────
     if punct_restorer is not None:
         print("\n✏️  Восстанавливаем пунктуацию...")
         merged = punct_restorer.restore_segments(merged)
 
-    # ── сборка диалога ────────────────────────────────────────────────────
     speaker_dialog = defaultdict(list)
     for seg in merged:
         sp = seg["speaker"].upper()
@@ -225,22 +177,12 @@ def run_pipeline(
         "transcript": transcript_text,
     }
 
-
-# ---------------------------------------------------------------------------
-# Вспомогательные функции
-# ---------------------------------------------------------------------------
-
 def format_time(t_seconds: float) -> str:
     ms = int((t_seconds - int(t_seconds)) * 1000)
     s  = int(t_seconds) % 60
     m  = (int(t_seconds) // 60) % 60
     h  = int(t_seconds) // 3600
     return f"{h:02d}:{m:02d}:{s:02d}.{ms:03d}"
-
-
-# ---------------------------------------------------------------------------
-# CLI
-# ---------------------------------------------------------------------------
 
 def parse_args():
     parser = argparse.ArgumentParser(description="ASR + Diarization + Beam Search + Punctuation")
@@ -254,7 +196,7 @@ def parse_args():
     parser.add_argument("--min_speakers", type=int, default=1)
     parser.add_argument("--max_speakers", type=int, default=4)
 
-    # LM / beam search
+
     parser.add_argument("--no_lm", action="store_true",
                         help="Отключить beam search, использовать greedy")
     parser.add_argument("--lm_beam", type=int, default=100,
@@ -264,7 +206,7 @@ def parse_args():
     parser.add_argument("--hotword_weight", type=float, default=10.0,
                         help="Вес hotwords (default=10.0)")
 
-    # Пунктуация
+
     parser.add_argument("--no_punct", action="store_true",
                         help="Отключить восстановление пунктуации")
 
