@@ -25,7 +25,8 @@
 source Папка_проекта/venv/bin/activate
 ```
 
-Если хочешь запускать из PyCharm, то выбери поставь окружение в настройках `Files -> Settings -> Python -> Interpreter -> Add Interpreter -> Add local Interpreter -> Select existing -> В Python path выбери Папка_проекта/venv/bin/python`
+Если хочешь запускать из PyCharm, то выбери поставь окружение в настройках `Files -> Settings -> Python -> Interpreter 
+-> Add Interpreter -> Add local Interpreter -> Select existing -> В Python path выбери Папка_проекта/venv/bin/python`
 В строчке Python Interpreter должен быть показан `Python 3.11`
 
 ---
@@ -55,7 +56,7 @@ torch.cuda.amp.custom_fwd is deprecated
 ```
 torch.backends.cudnn.allow_tf32 will be deprecated after Pytorch 2.9
 ```
-→ UserWarning из PyTorch, не влияет на работу.
+→ #### FutureWarning из SpeechBrain, не влияет на результат.
 ---
 ### Итоговая структура проекта
 ```
