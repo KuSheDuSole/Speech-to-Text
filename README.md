@@ -45,18 +45,20 @@ D:\CoursePaper\silero_vad\silero-vad-master\hubconf.py
 ```
 ---
 ### Известные предупреждения (не ошибки, игнорировать)
-```
-SpeechBrain could not find any working torchaudio backend.
-```
-→ Не влияет на работу, аудио загружается через librosa.
-```
-torch.cuda.amp.custom_fwd is deprecated
-```
-→ FutureWarning из SpeechBrain, не влияет на результат.
-```
-torch.backends.cudnn.allow_tf32 will be deprecated after Pytorch 2.9
-```
-→ #### FutureWarning из SpeechBrain, не влияет на результат.
+
+- Не влияет на работу, аудио загружается через librosa.
+    ```
+    SpeechBrain could not find any working torchaudio backend.
+    ```
+- FutureWarning из SpeechBrain, не влияет на результат.
+    ```
+    torch.cuda.amp.custom_fwd is deprecated
+    ```
+- UserWarning из PyTorch, не влияет на работу.
+    ```
+    torch.backends.cudnn.allow_tf32 will be deprecated after Pytorch 2.9
+    ```
+
 ---
 ### Итоговая структура проекта
 ```
