@@ -32,9 +32,9 @@ source Папка_проекта/venv/bin/activate
 ---
 ### Шаг 2 — Загрузка Silero VAD (вручную)
 GitHub может быть недоступен из Python из-за SSL. Скачай архив вручную в браузере:
-```
-https://github.com/snakers4/silero-vad/archive/refs/heads/master.zip
-```
+
+<https://github.com/snakers4/silero-vad/archive/refs/heads/master.zip>
+
 Распакуй в:
 ```
 Папка_проекта\silero_vad
@@ -46,9 +46,9 @@ https://github.com/snakers4/silero-vad/archive/refs/heads/master.zip
 ---
 ### Шаг 3 - загрузка модели ASR (вручную)
 Необходимо скачать модель автоматического распознавания речи по ссылке
-```
-https://drive.google.com/drive/folders/1gK7TcRhNwesh33L2-M-qf7sUexWIQ31-?usp=sharing
-```
+
+[Ссылка на модель](https://drive.google.com/drive/folders/1gK7TcRhNwesh33L2-M-qf7sUexWIQ31-?usp=sharing)
+
 Скачай модель waw2vec2_golos_002 и распакуй в папку `model`
 Папка по итогу должна выглядеть так:
 ```
