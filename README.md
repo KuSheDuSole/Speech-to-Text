@@ -25,7 +25,7 @@
 source Папка_проекта/venv/bin/activate
 ```
 
-Если хочешь запускать из PyCharm, то выбери поставь окружение в настройках `Files -> Settings -> Python -> Interpreter 
+Если хочешь запускать из PyCharm, то поставь окружение в настройках `Files -> Settings -> Python -> Interpreter 
 -> Add Interpreter -> Add local Interpreter -> Select existing -> В Python path выбери Папка_проекта/venv/bin/python`
 В строчке Python Interpreter должен быть показан `Python 3.11`
 
@@ -41,8 +41,37 @@ https://github.com/snakers4/silero-vad/archive/refs/heads/master.zip
 ```
 Убедись что файл существует:
 ```
-D:\CoursePaper\silero_vad\silero-vad-master\hubconf.py
+Папка_проекта\silero_vad\silero-vad-master\hubconf.py
 ```
+---
+### Шаг 3 - загрузка модели ASR (вручную)
+Необходимо скачать модель автоматического распознавания речи по ссылке
+```
+https://drive.google.com/drive/folders/1gK7TcRhNwesh33L2-M-qf7sUexWIQ31-?usp=sharing
+```
+Скачай модель waw2vec2_golos_002 и распакуй в папку `model`
+Папка по итогу должна выглядеть так:
+```
+Папка_проекта\model\waw2vec2_golos_002
+```
+---
+### Шаг 4 - Установка пути к проекту в файле конфигурации
+Необходимо изменить BASE_DIR в файле `Папка_проекта\Speech-to-Text-main\config.py`
+
+```
+if platform.system() == "Windows":
+    BASE_DIR = Path("D:/CoursePaper")    # для Windows
+else:
+    BASE_DIR = Path.home() / "Tom_D/CoursePaper"    # для Linux
+```
+---
+### Запуск
+Запуск осуществялется либо посредством терминала с активным окружением через команду
+```
+python Папка_проекта\Speech-to-Text-main\main.py
+```
+Либо через PyCharm простым запуском скрипта `main.py` в соответствующей директории (с активным окружением, см. выше)
+
 ---
 ### Известные предупреждения (не ошибки, игнорировать)
 
