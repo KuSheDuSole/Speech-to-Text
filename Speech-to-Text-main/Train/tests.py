@@ -15,11 +15,11 @@ def prepare_for_evaluation(text):
 
 def evaluate_model():
 
-    #MODEL_PATH = "./model/wav2vec2_finetuned_subset_001"
-    MODEL_PATH = "./model/wav2vec2_finetuned_subset_004"
+    #MODEL_PATH = "D:/CoursePaper/model/wav2vec2_finetuned_subset_002"
+    MODEL_PATH = "D:/CoursePaper/model/wav2vec2_golos_002"
 
-    TEST_DATA_PATH = "D:/CoursePaper/all_datasets/fully_prepared_subsets/wav2vec2_ready_subset_094"
-    NUM_TEST_SAMPLES = 300
+    TEST_DATA_PATH = "D:/CoursePaper/all_datasets/golos_tests/golos_subset_002"
+    NUM_TEST_SAMPLES = 1000
 
     print("🔍 Загружаем модель и данные...")
 
