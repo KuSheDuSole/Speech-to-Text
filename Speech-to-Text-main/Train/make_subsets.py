@@ -1,128 +1,149 @@
-from datasets import load_dataset, Audio, Dataset
-import os
+"""
+make_subsets.py — подготовка сабсетов из датасета GOLOS для обучения wav2vec2.
+
+Структура GOLOS:
+    golos_raw/
+        train/
+            manifest.jsonl          # все транскрипции
+            crowd/9/*.wav           # аудио из crowd9
+        0/*.wav                     # аудио из crowd0
+"""
+
 import json
+import os
 import re
 import numpy as np
+import soundfile as sf
+from pathlib import Path
+from datasets import Dataset
 import gc
 
-print("=== РАЗБИЕНИЕ ДАТАСЕТА НА ЧАСТИ ===")
 
-print("📥 Загружаем датасет...")
-dataset = load_dataset("Sh1man/common_voice_21_rus", split="train")
-print(f"✅ Загружено: {len(dataset)} записей")
+MANIFEST_PATH = Path("D:/CoursePaper/golos_raw/test/crowd/manifest.jsonl")
+OUTPUT_DIR    = Path("D:/CoursePaper/all_datasets/golos_tests")
 
-print("🎵 Преобразуем аудио в 16kHz...")
-dataset = dataset.cast_column("mp3", Audio(sampling_rate=16000))
+AUDIO_DIRS = [
+    Path("D:/CoursePaper/golos_raw/test/crowd/files")
+]
 
-def normalize_text(text):
-    if not text: return ""
-    text = text.lower()
+RECORDS_PER_SUBSET = 2000
+MIN_DURATION = 1.0
+MAX_DURATION = 15.0
+
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+
+def normalize_text(text: str) -> str:
+    if not text:
+        return ""
+    text = text.lower().strip()
     text = re.sub(r'\s+', ' ', text)
-    text = re.sub(r'[^а-яё0-9\s\.,!?\-]', '', text)
-    text = re.sub(r'\s*([\.,!?])\s*', r'\1 ', text)
+    text = re.sub(r'[^а-яё0-9\s]', '', text)
     return text.strip()
 
 
-def prepare_for_training(batch_item):
-    try:
-        audio_array = batch_item['mp3']['array']
-        sampling_rate = batch_item['mp3']['sampling_rate']
-
-        if batch_item['json'] and 'text' in batch_item['json']:
-            raw_text = batch_item['json']['text']
-            normalized_text = normalize_text(raw_text)
-        else:
-            normalized_text = ""
-
-        if len(audio_array) == 0 or not normalized_text:
-            return None
-
-        duration = len(audio_array) / sampling_rate
-        if duration < 1.0 or duration > 15.0:
-            return None
-
-        return {
-            'audio_array': audio_array,
-            'sampling_rate': sampling_rate,
-            'text': normalized_text,
-            'duration': duration,
-            'utterance_id': batch_item['json']['id'] if batch_item['json'] and 'id' in batch_item['json'] else '',
-            'original_text': raw_text
-        }
-    except Exception as e:
-        return None
+def find_audio(filename: str) -> Path | None:
+    """Ищет .wav файл по имени в известных папках."""
+    name = Path(filename).name  # берём только имя файла
+    for audio_dir in AUDIO_DIRS:
+        candidate = audio_dir / name
+        if candidate.exists():
+            return candidate
+    return None
 
 
-print("🔧 Начинаем обработку данных...")
+print("=== ПОДГОТОВКА САБСЕТОВ GOLOS ===")
+print(f"Манифест: {MANIFEST_PATH}")
+print(f"Выход: {OUTPUT_DIR}")
+print(f"Записей на сабсет: {RECORDS_PER_SUBSET}")
 
-output_dir = "/mnt/d/CoursePaper/all_datasets/fully_prepared_subsets"
-os.makedirs(output_dir, exist_ok=True)
-
-batch_size = 200
-records_per_subset = 1000
-
-current_subset_data = []
+current_subset = []
 subset_counter = 1
 total_processed = 0
-total_filtered = 0
+total_skipped = 0
 
-for i in range(0, len(dataset), batch_size):
-    end_idx = min(i + batch_size, len(dataset))
-    batch = dataset.select(range(i, end_idx))
+with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
+    for line_num, line in enumerate(f):
+        line = line.strip()
+        if not line:
+            continue
 
-    print(f"Обрабатываем батч {i // batch_size + 1}/{(len(dataset) + batch_size - 1) // batch_size}...")
+        try:
+            item = json.loads(line)
+        except json.JSONDecodeError:
+            continue
 
-    for j in range(len(batch)):
-        result = prepare_for_training(batch[j])
+        duration = item.get("duration", 0)
+        if duration < MIN_DURATION or duration > MAX_DURATION:
+            total_skipped += 1
+            continue
 
-        if result is not None:
-            current_subset_data.append(result)
-            total_processed += 1
+        text = normalize_text(item.get("text", ""))
+        if not text:
+            total_skipped += 1
+            continue
 
-            if len(current_subset_data) >= records_per_subset:
-                subset = Dataset.from_list(current_subset_data)
-                subset_path = os.path.join(output_dir, f"wav2vec2_ready_subset_{subset_counter:03d}")
-                subset.save_to_disk(subset_path)
+        audio_path = find_audio(item["audio_filepath"])
+        if audio_path is None:
+            total_skipped += 1
+            continue
 
-                durations = [item['duration'] for item in current_subset_data]
-                stats = {
-                    "subset_id": subset_counter,
-                    "records_count": len(subset),
-                    "total_duration_hours": sum(durations) / 3600,
-                    "avg_duration": float(np.mean(durations))
-                }
+        try:
+            audio_array, sr = sf.read(str(audio_path), dtype="float32")
+            if audio_array.ndim > 1:
+                audio_array = audio_array.mean(axis=1)
+            if len(audio_array) == 0:
+                total_skipped += 1
+                continue
+        except Exception:
+            total_skipped += 1
+            continue
 
-                with open(os.path.join(output_dir, f"subset_{subset_counter:03d}_stats.json"), 'w') as f:
-                    json.dump(stats, f, ensure_ascii=False, indent=2)
+        current_subset.append({
+            "audio_array":  audio_array,
+            "sampling_rate": sr,
+            "text":          text,
+            "duration":      duration,
+        })
+        total_processed += 1
 
-                print(f"✅ Сохранен поддатасет {subset_counter:03d}: {len(subset)} записей")
+        if len(current_subset) >= RECORDS_PER_SUBSET:
+            subset_path = OUTPUT_DIR / f"golos_subset_{subset_counter:03d}"
+            Dataset.from_list(current_subset).save_to_disk(str(subset_path))
 
-                current_subset_data = []
-                subset_counter += 1
-        else:
-            total_filtered += 1
+            stats = {
+                "subset_id":           subset_counter,
+                "records_count":       len(current_subset),
+                "total_duration_hours": sum(x["duration"] for x in current_subset) / 3600,
+                "avg_duration":        float(np.mean([x["duration"] for x in current_subset])),
+            }
+            with open(OUTPUT_DIR / f"subset_{subset_counter:03d}_stats.json", "w") as sf_out:
+                json.dump(stats, sf_out, ensure_ascii=False, indent=2)
 
-    gc.collect()
+            print(f"✅ Сохранён сабсет {subset_counter:03d}: {len(current_subset)} записей "
+                  f"({stats['total_duration_hours']:.2f} ч)")
 
-if current_subset_data:
-    subset = Dataset.from_list(current_subset_data)
-    subset_path = os.path.join(output_dir, f"wav2vec2_ready_subset_{subset_counter:03d}")
-    subset.save_to_disk(subset_path)
-    print(f"✅ Сохранен последний поддатасет {subset_counter:03d}: {len(subset)} записей")
+            current_subset = []
+            subset_counter += 1
+            gc.collect()
 
-final_stats = {
-    "total_original": len(dataset),
+        if line_num % 5000 == 0 and line_num > 0:
+            print(f"  Обработано строк манифеста: {line_num}, "
+                  f"принято: {total_processed}, пропущено: {total_skipped}")
+
+if current_subset:
+    subset_path = OUTPUT_DIR / f"golos_subset_{subset_counter:03d}"
+    Dataset.from_list(current_subset).save_to_disk(str(subset_path))
+    print(f"✅ Сохранён последний сабсет {subset_counter:03d}: {len(current_subset)} записей")
+
+stats_final = {
     "total_processed": total_processed,
-    "total_filtered": total_filtered,
-    "total_subsets": subset_counter,
-    "audio_sample_rate": 16000
+    "total_skipped":   total_skipped,
+    "total_subsets":   subset_counter,
 }
+with open(OUTPUT_DIR / "dataset_stats.json", "w", encoding="utf-8") as f:
+    json.dump(stats_final, f, ensure_ascii=False, indent=2)
 
-with open(os.path.join(output_dir, "dataset_stats.json"), 'w', encoding='utf-8') as f:
-    json.dump(final_stats, f, ensure_ascii=False, indent=2)
-
-print(f"\n🎉 ПОТОЧНАЯ ПОДГОТОВКА ЗАВЕРШЕНА!")
-print(f"📊 Итоговая статистика:")
-print(f"   - Обработано: {total_processed}")
-print(f"   - Отфильтровано: {total_filtered}")
-print(f"   - Поддатасетов: {subset_counter}")
+print(f"\n🎉 ГОТОВО!")
+print(f"   Принято:    {total_processed}")
+print(f"   Пропущено:  {total_skipped}")
+print(f"   Сабсетов:   {subset_counter}")
