@@ -54,3 +54,21 @@
 или оставить автоопределение.
  
 ---
+
+## License
+
+This project is licensed under the MIT License.
+
+## Third-Party Licenses
+
+This project uses the following open-source components:
+
+- Silero VAD — MIT License
+- SpeechBrain — Apache License 2.0
+- wav2vec2 (Facebook) — MIT License
+- pyctcdecode — Apache License 2.0
+- deepmultilingualpunctuation — MIT License
+- librosa — ISC License
+- scikit-learn — BSD-3 License
+
+All respective rights belong to the original authors of these libraries.
