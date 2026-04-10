@@ -18,7 +18,18 @@
 - scikit-learn       x
 ---
 ### Шаг 1 — Установка виртуального окружения и зависимостей
-Запусти скрипт `install_linux.sh`, он создаст виртуальное окружениие и скачает необходммые зависимости
+Запусти скрипт `install_mac.sh`, он создаст виртуальное окружениие и скачает необходммые зависимости
+
+### macOS
+ 
+```bash
+chmod +x install_mac.sh
+./install_mac.sh
+```
+ 
+Homebrew будет установлен автоматически если его нет.  
+На **Apple Silicon (M1/M2/M3)** — ускорение через MPS.  
+На **Intel Mac** — CPU режим.
 
 Если хочешь запускать из терминала, тогда активируй окружение через
 ```
@@ -62,7 +73,7 @@ GitHub может быть недоступен из Python из-за SSL. Ск�
 if platform.system() == "Windows":
     BASE_DIR = Path("D:/CoursePaper")    # для Windows
 else:
-    BASE_DIR = Path.home() / "Tom_D/CoursePaper"    # для Linux
+    BASE_DIR = Path.home() / "Tom_D/CoursePaper"    # для macOS
 ```
 ---
 ### Запуск
